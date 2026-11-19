@@ -1,0 +1,120 @@
+### Document submission walkthrough (JetBrains Rider / IntelliJ HTTP Client)
+# Run `docker compose up` first. Execute the requests from top to bottom: the login and create
+# requests store the tokens and the submission Id for the requests after them.
+# For Visual Studio or VS Code (REST Client), use DocumentSubmission.Api.http instead.
+# Seeded users: Alice (Editor, NL), Clara (Reviewer, NL). See README.md for all Ids.
+
+@baseUrl = http://localhost:8080
+@aliceEditor = 10000000-0000-0000-0000-000000000001
+@claraReviewer = 10000000-0000-0000-0000-000000000003
+@recordsOffice = 20000000-0000-0000-0000-000000000001
+
+### 1. Log in as the editor
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{ "userId": "{{aliceEditor}}" }
+
+> {% client.global.set("editorToken", response.body.token); %}
+
+### 2. Log in as the reviewer
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{ "userId": "{{claraReviewer}}" }
+
+> {% client.global.set("reviewerToken", response.body.token); %}
+
+### 3. Eligible reviewers and recipients in the editor's country
+GET {{baseUrl}}/reviewers
+Authorization: Bearer {{editorToken}}
+
+###
+GET {{baseUrl}}/recipients
+Authorization: Bearer {{editorToken}}
+
+### 4. Create a submission (version 1) for Clara
+POST {{baseUrl}}/submissions
+Authorization: Bearer {{editorToken}}
+Content-Type: multipart/form-data; boundary=WalkthroughBoundary
+
+--WalkthroughBoundary
+Content-Disposition: form-data; name="title"
+
+Fictional annual report
+--WalkthroughBoundary
+Content-Disposition: form-data; name="reviewerId"
+
+{{claraReviewer}}
+--WalkthroughBoundary
+Content-Disposition: form-data; name="comment"
+
+First draft, ready for review.
+--WalkthroughBoundary
+Content-Disposition: form-data; name="file"; filename="draft.pdf"
+Content-Type: application/pdf
+
+< ../samples/draft.pdf
+--WalkthroughBoundary--
+
+> {% client.global.set("submissionId", response.body.id); %}
+
+### 5. The reviewer's work list
+GET {{baseUrl}}/submissions
+Authorization: Bearer {{reviewerToken}}
+
+### 6. Reviewer returns version 1 with a comment
+POST {{baseUrl}}/submissions/{{submissionId}}/return
+Authorization: Bearer {{reviewerToken}}
+Content-Type: application/json
+
+{ "versionNumber": 1, "comment": "Please add the summary table." }
+
+### 7. Editor resubmits (version 2) with a comment on what changed
+POST {{baseUrl}}/submissions/{{submissionId}}/resubmit
+Authorization: Bearer {{editorToken}}
+Content-Type: multipart/form-data; boundary=WalkthroughBoundary
+
+--WalkthroughBoundary
+Content-Disposition: form-data; name="comment"
+
+Added the summary table.
+--WalkthroughBoundary
+Content-Disposition: form-data; name="file"; filename="revised.pdf"
+Content-Type: application/pdf
+
+< ../samples/revised.pdf
+--WalkthroughBoundary--
+
+### 8. Approving the old version 1 is rejected with 409 (stale versionNumber)
+POST {{baseUrl}}/submissions/{{submissionId}}/approve
+Authorization: Bearer {{reviewerToken}}
+Content-Type: application/json
+
+{ "versionNumber": 1 }
+
+### 9. Reviewer approves version 2
+POST {{baseUrl}}/submissions/{{submissionId}}/approve
+Authorization: Bearer {{reviewerToken}}
+Content-Type: application/json
+
+{ "versionNumber": 2 }
+
+### 10. Editor distributes to a recipient
+POST {{baseUrl}}/submissions/{{submissionId}}/distribute
+Authorization: Bearer {{editorToken}}
+Content-Type: application/json
+
+{ "recipientId": "{{recordsOffice}}" }
+
+### 11. Details: all versions, approved version, recipient
+GET {{baseUrl}}/submissions/{{submissionId}}
+Authorization: Bearer {{editorToken}}
+
+### 12. Download version 1
+GET {{baseUrl}}/submissions/{{submissionId}}/versions/1/content
+Authorization: Bearer {{reviewerToken}}
+
+### 13. Audit trail
+GET {{baseUrl}}/submissions/{{submissionId}}/audit
+Authorization: Bearer {{editorToken}}

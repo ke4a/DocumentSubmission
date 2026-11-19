@@ -1,6 +1,117 @@
-@HostAddress = http://localhost:5213
+### Document submission walkthrough (Visual Studio 2022 17.12+ / VS Code REST Client)
+# Run `docker compose up` first. Execute the requests from top to bottom: later requests
+# read the tokens and the submission Id from the named login and create responses.
+# For JetBrains Rider or IntelliJ, use DocumentSubmission.Api.Rider.http instead.
+# Seeded users: Alice (Editor, NL), Clara (Reviewer, NL). See README.md for all Ids.
 
-GET {{HostAddress}}/weatherforecast/
-Accept: application/json
+@baseUrl = http://localhost:8080
+@aliceEditor = 10000000-0000-0000-0000-000000000001
+@claraReviewer = 10000000-0000-0000-0000-000000000003
+@recordsOffice = 20000000-0000-0000-0000-000000000001
+
+### 1. Log in as the editor
+# @name editorLogin
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{ "userId": "{{aliceEditor}}" }
+
+### 2. Log in as the reviewer
+# @name reviewerLogin
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{ "userId": "{{claraReviewer}}" }
+
+### 3. Eligible reviewers and recipients in the editor's country
+GET {{baseUrl}}/reviewers
+Authorization: Bearer {{editorLogin.response.body.$.token}}
 
 ###
+GET {{baseUrl}}/recipients
+Authorization: Bearer {{editorLogin.response.body.$.token}}
+
+### 4. Create a submission (version 1) for Clara
+# @name create
+POST {{baseUrl}}/submissions
+Authorization: Bearer {{editorLogin.response.body.$.token}}
+Content-Type: multipart/form-data; boundary=WalkthroughBoundary
+
+--WalkthroughBoundary
+Content-Disposition: form-data; name="title"
+
+Fictional annual report
+--WalkthroughBoundary
+Content-Disposition: form-data; name="reviewerId"
+
+{{claraReviewer}}
+--WalkthroughBoundary
+Content-Disposition: form-data; name="comment"
+
+First draft, ready for review.
+--WalkthroughBoundary
+Content-Disposition: form-data; name="file"; filename="draft.pdf"
+Content-Type: application/pdf
+
+< ../samples/draft.pdf
+--WalkthroughBoundary--
+
+### 5. The reviewer's work list
+GET {{baseUrl}}/submissions
+Authorization: Bearer {{reviewerLogin.response.body.$.token}}
+
+### 6. Reviewer returns version 1 with a comment
+POST {{baseUrl}}/submissions/{{create.response.body.$.id}}/return
+Authorization: Bearer {{reviewerLogin.response.body.$.token}}
+Content-Type: application/json
+
+{ "versionNumber": 1, "comment": "Please add the summary table." }
+
+### 7. Editor resubmits (version 2) with a comment on what changed
+POST {{baseUrl}}/submissions/{{create.response.body.$.id}}/resubmit
+Authorization: Bearer {{editorLogin.response.body.$.token}}
+Content-Type: multipart/form-data; boundary=WalkthroughBoundary
+
+--WalkthroughBoundary
+Content-Disposition: form-data; name="comment"
+
+Added the summary table.
+--WalkthroughBoundary
+Content-Disposition: form-data; name="file"; filename="revised.pdf"
+Content-Type: application/pdf
+
+< ../samples/revised.pdf
+--WalkthroughBoundary--
+
+### 8. Approving the old version 1 is rejected with 409 (stale versionNumber)
+POST {{baseUrl}}/submissions/{{create.response.body.$.id}}/approve
+Authorization: Bearer {{reviewerLogin.response.body.$.token}}
+Content-Type: application/json
+
+{ "versionNumber": 1 }
+
+### 9. Reviewer approves version 2
+POST {{baseUrl}}/submissions/{{create.response.body.$.id}}/approve
+Authorization: Bearer {{reviewerLogin.response.body.$.token}}
+Content-Type: application/json
+
+{ "versionNumber": 2 }
+
+### 10. Editor distributes to a recipient
+POST {{baseUrl}}/submissions/{{create.response.body.$.id}}/distribute
+Authorization: Bearer {{editorLogin.response.body.$.token}}
+Content-Type: application/json
+
+{ "recipientId": "{{recordsOffice}}" }
+
+### 11. Details: all versions, approved version, recipient
+GET {{baseUrl}}/submissions/{{create.response.body.$.id}}
+Authorization: Bearer {{editorLogin.response.body.$.token}}
+
+### 12. Download version 1
+GET {{baseUrl}}/submissions/{{create.response.body.$.id}}/versions/1/content
+Authorization: Bearer {{reviewerLogin.response.body.$.token}}
+
+### 13. Audit trail
+GET {{baseUrl}}/submissions/{{create.response.body.$.id}}/audit
+Authorization: Bearer {{editorLogin.response.body.$.token}}
