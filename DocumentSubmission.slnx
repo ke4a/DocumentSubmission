@@ -1,3 +1,7 @@
 <Solution>
+  <Project Path="DocumentSubmission.Api.IntegrationTests/DocumentSubmission.Api.IntegrationTests.csproj" />
   <Project Path="DocumentSubmission.Api/DocumentSubmission.Api.csproj" />
+  <Project Path="DocumentSubmission.Domain.Tests/DocumentSubmission.Domain.Tests.csproj" />
+  <Project Path="DocumentSubmission.Domain/DocumentSubmission.Domain.csproj" />
+  <Project Path="DocumentSubmission.Infrastructure/DocumentSubmission.Infrastructure.csproj" />
 </Solution>
