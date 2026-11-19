@@ -127,3 +127,12 @@ All endpoints except login need `Authorization: Bearer <token>`. Errors are `app
 | GET | `/submissions/{id}/audit` | participants | Audit trail, oldest first |
 
 Workflow actions return `200` with the updated submission (same shape as `GET /submissions/{id}`).
+
+## AI-assisted drafting (not implemented)
+
+An assistant could draft a decision document for an Editor from earlier approved documents. Rules it would follow:
+
+- It searches only the Editor's own country, the same access rule as the API.
+- It only produces a draft. The Editor edits and submits it through the normal workflow, so review and audit are unchanged.
+- Every statement in the draft links to its source document, so the Editor can verify it.
+- Documents go only to a model hosted under the company's control and are never used for training.
