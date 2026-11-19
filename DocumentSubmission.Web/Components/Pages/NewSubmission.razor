@@ -1,0 +1,80 @@
+@page "/submissions/new"
+@inject ApiClient Api
+@inject NavigationManager Navigation
+
+<PageTitle>New submission</PageTitle>
+
+<h1 class="h3 mb-3">New submission</h1>
+
+<ErrorAlert Error="error" />
+
+<form style="max-width: 40rem" @onsubmit="Create">
+    <div class="mb-3">
+        <label class="form-label" for="title">Title</label>
+        <input id="title" class="form-control" required maxlength="200" @bind="title" />
+    </div>
+    <div class="mb-3">
+        <label class="form-label" for="reviewer">Reviewer</label>
+        <select id="reviewer" class="form-select" required @bind="reviewerId">
+            <option value="">Choose a reviewer…</option>
+            @foreach (var reviewer in reviewers)
+            {
+                <option value="@reviewer.Id">@reviewer.Name</option>
+            }
+        </select>
+    </div>
+    <div class="mb-3">
+        <label class="form-label" for="file">Document (PDF or DOCX, at most 10 MB)</label>
+        <InputFile id="file" class="form-control" accept=".pdf,.docx" required OnChange="e => file = e.File" />
+    </div>
+    <div class="mb-3">
+        <label class="form-label" for="comment">Comment for the reviewer (optional)</label>
+        <textarea id="comment" class="form-control" rows="3" maxlength="2000" @bind="comment"></textarea>
+    </div>
+    <button class="btn btn-primary" disabled="@busy">Submit</button>
+    <a class="btn btn-link" href="">Cancel</a>
+</form>
+
+@code {
+    private List<Person> reviewers = [];
+    private string title = "";
+    private string reviewerId = "";
+    private IBrowserFile? file;
+    private string? comment;
+    private bool busy;
+    private ApiException? error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            reviewers = await Api.GetReviewersAsync();
+        }
+        catch (ApiException ex)
+        {
+            error = ex;
+        }
+    }
+
+    private async Task Create()
+    {
+        if (file is null)
+            return;
+
+        busy = true;
+        error = null;
+        try
+        {
+            var created = await Api.CreateAsync(title, Guid.Parse(reviewerId), file, comment);
+            Navigation.NavigateTo($"submissions/{created.Id}");
+        }
+        catch (ApiException ex)
+        {
+            error = ex;
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+}

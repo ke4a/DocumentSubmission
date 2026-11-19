@@ -1,0 +1,73 @@
+@page "/"
+@inject ApiClient Api
+@inject UserSession Session
+
+<PageTitle>Submissions</PageTitle>
+
+<div class="d-flex align-items-center mb-3">
+    <h1 class="h3 mb-0 me-auto">@(Session.IsEditor ? "My submissions" : "Assigned to me")</h1>
+    @if (Session.IsEditor)
+    {
+        <a class="btn btn-primary" href="submissions/new">New submission</a>
+    }
+</div>
+
+<ErrorAlert Error="error" />
+
+@if (submissions is null)
+{
+    if (error is null)
+    {
+        <p>Loading…</p>
+    }
+}
+else if (submissions.Count == 0)
+{
+    <p class="text-body-secondary">No submissions yet.</p>
+}
+else
+{
+    <table class="table table-hover align-middle">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Status</th>
+                <th>Editor</th>
+                <th>Reviewer</th>
+                <th>Version</th>
+                <th>Created</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var submission in submissions)
+            {
+                <tr>
+                    <td><a href="submissions/@submission.Id">@submission.Title</a></td>
+                    <td><StatusBadge Status="submission.Status" /></td>
+                    <td>@submission.Editor.Name</td>
+                    <td>@submission.Reviewer.Name</td>
+                    <td>@submission.CurrentVersionNumber</td>
+                    <td>@Format.Time(submission.CreatedAt)</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<SubmissionSummary>? submissions;
+    private ApiException? error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // The API returns them newest first.
+            submissions = await Api.GetSubmissionsAsync();
+        }
+        catch (ApiException ex)
+        {
+            error = ex;
+        }
+    }
+}

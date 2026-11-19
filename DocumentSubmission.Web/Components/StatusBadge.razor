@@ -1,0 +1,13 @@
+<span class="badge @CssClass">@Status</span>
+
+@code {
+    [Parameter, EditorRequired] public SubmissionStatus Status { get; set; }
+
+    private string CssClass => Status switch
+    {
+        SubmissionStatus.Submitted => "text-bg-primary",
+        SubmissionStatus.Returned => "text-bg-warning",
+        SubmissionStatus.Approved => "text-bg-success",
+        _ => "text-bg-secondary",
+    };
+}

@@ -4,4 +4,5 @@
   <Project Path="DocumentSubmission.Domain.Tests/DocumentSubmission.Domain.Tests.csproj" />
   <Project Path="DocumentSubmission.Domain/DocumentSubmission.Domain.csproj" />
   <Project Path="DocumentSubmission.Infrastructure/DocumentSubmission.Infrastructure.csproj" />
+  <Project Path="DocumentSubmission.Web/DocumentSubmission.Web.csproj" />
 </Solution>

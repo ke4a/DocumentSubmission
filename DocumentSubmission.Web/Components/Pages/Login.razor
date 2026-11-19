@@ -1,0 +1,54 @@
+@page "/login"
+@inject IConfiguration Configuration
+@inject ApiClient Api
+@inject UserSession Session
+@inject NavigationManager Navigation
+
+<PageTitle>Log in</PageTitle>
+
+<h1 class="h3">Log in</h1>
+<p class="text-body-secondary">Development login: choose one of the seeded users.</p>
+
+<ErrorAlert Error="error" />
+
+<form class="d-flex gap-2" style="max-width: 36rem" @onsubmit="LogIn">
+    <select class="form-select" required @bind="userId">
+        <option value="">Choose a user…</option>
+        @foreach (var user in users)
+        {
+            <option value="@user.Id">@user.Name — @user.Role, @user.Country</option>
+        }
+    </select>
+    <button class="btn btn-primary text-nowrap" disabled="@busy">Log in</button>
+</form>
+
+@code {
+    private LoginUser[] users = [];
+    private string userId = "";
+    private bool busy;
+    private ApiException? error;
+
+    protected override void OnInitialized() =>
+        users = Configuration.GetSection("Users").Get<LoginUser[]>() ?? [];
+
+    private async Task LogIn()
+    {
+        var user = users.Single(u => u.Id.ToString() == userId);
+        busy = true;
+        error = null;
+        try
+        {
+            var login = await Api.LoginAsync(user.Id);
+            Session.LogIn(user, login.Token);
+            Navigation.NavigateTo("");
+        }
+        catch (ApiException ex)
+        {
+            error = ex;
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+}

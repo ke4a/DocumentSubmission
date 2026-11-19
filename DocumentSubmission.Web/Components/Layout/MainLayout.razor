@@ -1,0 +1,44 @@
+@inherits LayoutComponentBase
+@inject UserSession Session
+@inject NavigationManager Navigation
+
+<nav class="navbar bg-body-tertiary border-bottom mb-4">
+    <div class="container">
+        <a class="navbar-brand" href="">Document Submission</a>
+        @if (Session.User is { } user)
+        {
+            <span class="navbar-text ms-auto me-3">@user.Name · @user.Role · @user.Country</span>
+            <button class="btn btn-outline-secondary btn-sm" @onclick="LogOut">Log out</button>
+        }
+    </div>
+</nav>
+
+<main class="container pb-5">
+    @if (Session.IsLoggedIn || OnLoginPage)
+    {
+        @Body
+    }
+</main>
+
+<div id="blazor-error-ui" data-nosnippet>
+    An unhandled error has occurred.
+    <a href="." class="reload">Reload</a>
+    <span class="dismiss">🗙</span>
+</div>
+
+@code {
+    private bool OnLoginPage => Navigation.ToBaseRelativePath(Navigation.Uri).StartsWith("login");
+
+    // Every page except the login page needs a session.
+    protected override void OnParametersSet()
+    {
+        if (!Session.IsLoggedIn && !OnLoginPage)
+            Navigation.NavigateTo("login");
+    }
+
+    private void LogOut()
+    {
+        Session.LogOut();
+        Navigation.NavigateTo("login");
+    }
+}

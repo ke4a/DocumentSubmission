@@ -1,0 +1,196 @@
+@page "/submissions/{Id:guid}"
+@inject ApiClient Api
+@inject UserSession Session
+@inject IJSRuntime JS
+
+<PageTitle>@(submission?.Title ?? "Submission")</PageTitle>
+
+<p><a href="">← Submissions</a></p>
+
+<ErrorAlert Error="error" />
+
+@if (submission is not null)
+{
+    <div class="d-flex align-items-center gap-2 mb-3">
+        <h1 class="h3 mb-0">@submission.Title</h1>
+        <StatusBadge Status="submission.Status" />
+        <button class="btn btn-outline-secondary btn-sm ms-auto" disabled="@busy" @onclick="() => Run(LoadAsync)">Refresh</button>
+    </div>
+
+    <dl class="row">
+        <dt class="col-sm-2">Editor</dt>
+        <dd class="col-sm-10">@submission.Editor.Name</dd>
+        <dt class="col-sm-2">Reviewer</dt>
+        <dd class="col-sm-10">@submission.Reviewer.Name</dd>
+        <dt class="col-sm-2">Country</dt>
+        <dd class="col-sm-10">@submission.CountryCode</dd>
+        <dt class="col-sm-2">Created</dt>
+        <dd class="col-sm-10">@Format.Time(submission.CreatedAt)</dd>
+        @if (submission is { Recipient: { } distributedTo, DistributedAt: { } distributedAt })
+        {
+            <dt class="col-sm-2">Distributed to</dt>
+            <dd class="col-sm-10">@distributedTo.Name, @Format.Time(distributedAt)</dd>
+        }
+    </dl>
+
+    @* Only actions that can succeed for this user are shown; the API still checks every request. *@
+    @if (CanReview)
+    {
+        <div class="card mb-4">
+            <div class="card-body">
+                <h2 class="h5">Review version @submission.CurrentVersionNumber</h2>
+                <button class="btn btn-success mb-3" disabled="@busy" @onclick="Approve">Approve</button>
+                <form @onsubmit="Return">
+                    <label class="form-label" for="return-comment">Or return it with a comment</label>
+                    <textarea id="return-comment" class="form-control mb-2" rows="3" maxlength="2000" required @bind="returnComment"></textarea>
+                    <button class="btn btn-warning" disabled="@busy">Return</button>
+                </form>
+            </div>
+        </div>
+    }
+    @if (CanResubmit)
+    {
+        <div class="card mb-4">
+            <form class="card-body" @onsubmit="Resubmit">
+                <h2 class="h5">Resubmit</h2>
+                <label class="form-label" for="file">New version (PDF or DOCX, at most 10 MB)</label>
+                <InputFile id="file" class="form-control mb-2" accept=".pdf,.docx" required OnChange="e => file = e.File" />
+                <label class="form-label" for="resubmit-comment">Comment (optional)</label>
+                <textarea id="resubmit-comment" class="form-control mb-2" rows="2" maxlength="2000" @bind="resubmitComment"></textarea>
+                <button class="btn btn-primary" disabled="@busy">Resubmit</button>
+            </form>
+        </div>
+    }
+    @if (CanDistribute)
+    {
+        <div class="card mb-4">
+            <form class="card-body" @onsubmit="Distribute">
+                <h2 class="h5">Distribute</h2>
+                <div class="d-flex gap-2" style="max-width: 36rem">
+                    <select class="form-select" required @bind="recipientId">
+                        <option value="">Choose a recipient…</option>
+                        @foreach (var recipient in recipients)
+                        {
+                            <option value="@recipient.Id">@recipient.Name</option>
+                        }
+                    </select>
+                    <button class="btn btn-primary text-nowrap" disabled="@busy">Distribute</button>
+                </div>
+            </form>
+        </div>
+    }
+
+    <h2 class="h5">Versions</h2>
+    <table class="table align-middle mb-4">
+        <thead>
+            <tr><th>#</th><th>File</th><th>Size</th><th>Uploaded</th><th></th></tr>
+        </thead>
+        <tbody>
+            @foreach (var version in submission.Versions.OrderByDescending(v => v.Number))
+            {
+                <tr>
+                    <td>@version.Number</td>
+                    <td><button type="button" class="btn btn-link p-0" @onclick="() => Download(version)">@version.FileName</button></td>
+                    <td>@Format.Size(version.Size)</td>
+                    <td>@Format.Time(version.CreatedAt)</td>
+                    <td>
+                        @if (version.Number == submission.ApprovedVersionNumber)
+                        {
+                            <span class="badge text-bg-success">Approved</span>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <h2 class="h5">Audit trail</h2>
+    <table class="table">
+        <thead>
+            <tr><th>Time</th><th>Action</th><th>By</th><th>Version</th><th>Comment / recipient</th></tr>
+        </thead>
+        <tbody>
+            @foreach (var entry in audit)
+            {
+                <tr>
+                    <td>@Format.Time(entry.OccurredAt)</td>
+                    <td>@entry.Action</td>
+                    <td>@entry.Actor.Name</td>
+                    <td>@entry.VersionNumber</td>
+                    <td>@(entry.Recipient?.Name ?? entry.Comment)</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private Submission? submission;
+    private List<AuditEntry> audit = [];
+    private List<Person> recipients = [];
+    private bool busy;
+    private ApiException? error;
+
+    private string returnComment = "";
+    private IBrowserFile? file;
+    private string? resubmitComment;
+    private string recipientId = "";
+
+    private Guid? UserId => Session.User?.Id;
+    private bool CanReview => submission?.Status == SubmissionStatus.Submitted && submission.Reviewer.Id == UserId;
+    private bool CanResubmit => submission?.Status == SubmissionStatus.Returned && submission.Editor.Id == UserId;
+    private bool CanDistribute => submission?.Status == SubmissionStatus.Approved && submission.Editor.Id == UserId;
+
+    protected override Task OnParametersSetAsync() => Run(LoadAsync);
+
+    private async Task LoadAsync()
+    {
+        submission = await Api.GetSubmissionAsync(Id);
+        audit = await Api.GetAuditAsync(Id);
+        if (CanDistribute && recipients.Count == 0)
+            recipients = await Api.GetRecipientsAsync();
+    }
+
+    // Approve and return name the version shown on this page, so a stale page gets a 409 instead of
+    // deciding on a version the reviewer has not seen.
+    private Task Approve() => Act(() => Api.ApproveAsync(Id, submission!.CurrentVersionNumber));
+
+    private Task Return() => Act(() => Api.ReturnAsync(Id, submission!.CurrentVersionNumber, returnComment));
+
+    private Task Resubmit() => file is null ? Task.CompletedTask : Act(() => Api.ResubmitAsync(Id, file, resubmitComment));
+
+    private Task Distribute() => Act(() => Api.DistributeAsync(Id, Guid.Parse(recipientId)));
+
+    private Task Download(DocumentVersion version) => Run(async () =>
+    {
+        using var streamReference = new DotNetStreamReference(await Api.DownloadAsync(Id, version.Number));
+        await JS.InvokeVoidAsync("downloadFile", version.FileName, streamReference);
+    });
+
+    // Runs a workflow action, then reloads the submission and its audit trail.
+    private Task Act(Func<Task> action) => Run(async () =>
+    {
+        await action();
+        await LoadAsync();
+    });
+
+    private async Task Run(Func<Task> action)
+    {
+        busy = true;
+        error = null;
+        try
+        {
+            await action();
+        }
+        catch (ApiException ex)
+        {
+            error = ex;
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+}
