@@ -22,13 +22,7 @@ Stop and delete the data with `docker compose down -v`.
 
 To run the API from the IDE instead (`dotnet run --project DocumentSubmission.Api`), start only the database with `docker compose up db`. The API then listens on <http://localhost:5213>.
 
-Configuration (appsettings or environment variables):
-
-| Setting | Environment variable | Notes |
-|---------|----------------------|-------|
-| `ConnectionStrings:Database` | `ConnectionStrings__Database` | PostgreSQL connection string |
-| `Jwt:SigningKey` | `Jwt__SigningKey` | At least 32 characters. A development key is in `appsettings.Development.json`. |
-| `Jwt:Issuer`, `Jwt:Audience`, `Jwt:LifetimeMinutes` | `Jwt__Issuer`, … | Defaults in `appsettings.json` |
+For local runs, Docker Compose and `appsettings.Development.json` provide all configuration. Elsewhere, set `ConnectionStrings__Database` and `Jwt__SigningKey` (at least 32 characters); the other `Jwt__*` settings have defaults in `appsettings.json`.
 
 ## Test
 
@@ -60,38 +54,12 @@ All data is fictional. Log in with a user Id (`POST /auth/login`, Development on
 
 ## Example flow
 
-Two `.http` files walk through the whole workflow (login → create → return → resubmit → approve → distribute → audit), one per editor, because the editors pass values between requests differently:
+Two `.http` files walk through the whole workflow (login → create → return → resubmit → approve → distribute → audit) using the documents in `samples/`. There is one file per editor, because the editors pass values between requests differently:
 
 - [`DocumentSubmission.Api.http`](DocumentSubmission.Api/DocumentSubmission.Api.http) for Visual Studio 2022 17.12+ or VS Code with the REST Client extension.
 - [`DocumentSubmission.Api.Rider.http`](DocumentSubmission.Api/DocumentSubmission.Api.Rider.http) for JetBrains Rider or IntelliJ.
 
-The same with `curl` (needs `jq`):
-
-```bash
-API=http://localhost:8080
-login() { curl -s -X POST $API/auth/login -H 'Content-Type: application/json' -d "{\"userId\":\"$1\"}" | jq -r .token; }
-EDITOR=$(login 10000000-0000-0000-0000-000000000001)    # Alice, Editor NL
-REVIEWER=$(login 10000000-0000-0000-0000-000000000003)  # Clara, Reviewer NL
-
-# Create and submit version 1
-ID=$(curl -s -X POST $API/submissions -H "Authorization: Bearer $EDITOR" \
-  -F title="Fictional annual report" -F reviewerId=10000000-0000-0000-0000-000000000003 \
-  -F file=@samples/draft.pdf -F comment="First draft, ready for review." | jq -r .id)
-
-# Reviewer returns it; editor uploads version 2; reviewer approves version 2
-curl -s -X POST $API/submissions/$ID/return -H "Authorization: Bearer $REVIEWER" \
-  -H 'Content-Type: application/json' -d '{"versionNumber":1,"comment":"Please add the summary table."}'
-curl -s -X POST $API/submissions/$ID/resubmit -H "Authorization: Bearer $EDITOR" -F file=@samples/revised.pdf \
-  -F comment="Added the summary table."
-curl -s -X POST $API/submissions/$ID/approve -H "Authorization: Bearer $REVIEWER" \
-  -H 'Content-Type: application/json' -d '{"versionNumber":2}'
-
-# Distribute, then read the audit trail and download version 1
-curl -s -X POST $API/submissions/$ID/distribute -H "Authorization: Bearer $EDITOR" \
-  -H 'Content-Type: application/json' -d '{"recipientId":"20000000-0000-0000-0000-000000000001"}'
-curl -s $API/submissions/$ID/audit -H "Authorization: Bearer $EDITOR" | jq
-curl -s -OJ $API/submissions/$ID/versions/1/content -H "Authorization: Bearer $REVIEWER"
-```
+Alternatively, use the interactive docs at <http://localhost:8080/scalar>.
 
 ## Solution layout
 
@@ -118,18 +86,16 @@ Condensed from [Assumptions](docs/SPEC.md#6-assumptions), [Decisions & trade-off
 - Login exists only in Development.
 - All timestamps are UTC.
 
-### Decisions
+### Decisions and trade-offs
 
-- **One API + PostgreSQL** in Docker Compose: simple to run and explain.
-- **Controllers** with attribute-based authorization and DataAnnotations validation.
-- **Workflow rules in the `Submission` entity**: every state change goes through one `Transition()` method, which also writes the audit entry and increments `ConcurrencyToken`. Unit-tested without HTTP or a database.
-- **Thin services using `AppDbContext` directly** (no repositories, no mediator).
-- **Typed domain exceptions** mapped to status codes in one `IExceptionHandler`. Every error is ProblemDetails.
-- **Optimistic concurrency** with an explicit `ConcurrencyToken` column. A concurrent change, or a duplicate version number from two simultaneous resubmits, returns `409`.
-- **Approve and return name the `versionNumber`**, so a Reviewer can only decide on the version they actually saw.
-- **File bytes in a separate table** (`DocumentContents`): saved in the same transaction as the version, and never loaded by list or detail queries. Blob storage would be the production choice for large files.
-- **Development-only JWT login** that exercises the real authentication pipeline in place of an identity provider.
-- **Integration tests on real PostgreSQL** (Testcontainers) for real constraints, transactions and concurrency.
+- **Workflow rules in the `Submission` entity**: every state change goes through one `Transition()` method, which also writes the audit entry and increments `ConcurrencyToken`. Unit-tested without HTTP or a database. *Trade-off: the entity carries behaviour, not just data.*
+- **Thin services using `AppDbContext` directly** (no repositories, no mediator). *Trade-off: use cases depend on EF Core.*
+- **Rule violations throw typed exceptions** (not found, not allowed, invalid input, invalid state), which one handler turns into 404/403/400/409 ProblemDetails responses. *Trade-off: a method's signature doesn't show that it can fail; a result type would make that explicit, at the cost of extra code in every caller.*
+- **Optimistic concurrency** with an explicit `ConcurrencyToken` column. A concurrent change, or two simultaneous resubmits, returns `409`. *Trade-off: the client must reload and retry.*
+- **Approve and return name the `versionNumber`**, so a Reviewer only decides on the version they actually saw.
+- **File bytes in a separate database table**: same transaction as the version, never loaded by list or detail queries. *Trade-off: doesn't suit large files; blob storage would be the production choice.*
+- **Development-only JWT login** in place of an identity provider. *Trade-off: not production authentication.*
+- **Integration tests on real PostgreSQL** (Testcontainers). *Trade-off: Docker is needed to run them.*
 
 ### API
 
