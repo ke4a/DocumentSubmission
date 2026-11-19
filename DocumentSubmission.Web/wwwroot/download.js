@@ -1,9 +1,7 @@
-// Saves a file that .NET sends as a DotNetStreamReference
-// (https://learn.microsoft.com/aspnet/core/blazor/file-downloads).
-// Needed because the API requires a bearer token, so the browser cannot link to it directly.
-window.downloadFile = async (fileName, streamReference) => {
-    const blob = new Blob([await streamReference.arrayBuffer()]);
-    const url = URL.createObjectURL(blob);
+// Saves bytes downloaded by ApiClient as a file. The API needs a bearer token,
+// so the browser cannot simply follow a link to it.
+window.downloadFile = (fileName, bytes) => {
+    const url = URL.createObjectURL(new Blob([bytes]));
     const link = document.createElement("a");
     link.href = url;
     link.download = fileName;

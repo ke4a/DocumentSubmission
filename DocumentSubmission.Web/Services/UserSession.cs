@@ -1,8 +1,8 @@
 namespace DocumentSubmission.Web.Services;
 
 /// <summary>
-/// The logged-in user and their API token. Registered as scoped, and in Blazor Server a scope lives as
-/// long as the circuit (one browser tab), so the token stays in server memory. Reloading the page logs out.
+/// The logged-in user and their API token, kept in memory only (one user per browser tab).
+/// Reloading the page logs out.
 /// </summary>
 public sealed class UserSession
 {
@@ -17,5 +17,16 @@ public sealed class UserSession
     public void LogOut() => (User, Token) = (null, null);
 }
 
-/// <summary>A seeded user offered on the login page (configured in appsettings.Development.json).</summary>
-public sealed record LoginUser(Guid Id, string Name, string Role, string Country);
+public sealed record LoginUser(Guid Id, string Name, string Role, string Country)
+{
+    /// <summary>The seeded users (DocumentSubmission.Infrastructure/SeedData.cs) offered on the login page.</summary>
+    public static readonly LoginUser[] Seeded =
+    [
+        new(Guid.Parse("10000000-0000-0000-0000-000000000001"), "Alice Ashford", "Editor", "NL"),
+        new(Guid.Parse("10000000-0000-0000-0000-000000000002"), "Bram Brink", "Editor", "NL"),
+        new(Guid.Parse("10000000-0000-0000-0000-000000000003"), "Clara Cole", "Reviewer", "NL"),
+        new(Guid.Parse("10000000-0000-0000-0000-000000000004"), "Daan Dekker", "Reviewer", "NL"),
+        new(Guid.Parse("10000000-0000-0000-0000-000000000005"), "Emma Evers", "Editor", "BE"),
+        new(Guid.Parse("10000000-0000-0000-0000-000000000006"), "Finn Fontaine", "Reviewer", "BE"),
+    ];
+}

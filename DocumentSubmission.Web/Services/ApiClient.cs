@@ -64,10 +64,10 @@ public sealed class ApiClient(HttpClient http, UserSession session, NavigationMa
     public Task<Submission> DistributeAsync(Guid id, Guid recipientId) =>
         SendAsync<Submission>(HttpMethod.Post, $"submissions/{id}/distribute", JsonContent.Create(new { recipientId }));
 
-    public async Task<Stream> DownloadAsync(Guid id, int versionNumber)
+    public async Task<byte[]> DownloadAsync(Guid id, int versionNumber)
     {
-        var response = await SendAsync(HttpMethod.Get, $"submissions/{id}/versions/{versionNumber}/content");
-        return await response.Content.ReadAsStreamAsync();
+        using var response = await SendAsync(HttpMethod.Get, $"submissions/{id}/versions/{versionNumber}/content");
+        return await response.Content.ReadAsByteArrayAsync();
     }
 
     private static void AddFileAndComment(MultipartFormDataContent form, IBrowserFile file, string? comment)
@@ -75,7 +75,7 @@ public sealed class ApiClient(HttpClient http, UserSession session, NavigationMa
         if (file.Size > MaxFileSize)
             throw new ApiException("The file is too large.", "The maximum size is 10 MB.");
 
-        // The file is streamed from the browser while the request is sent. The API detects the content type itself.
+        // The API detects the content type itself.
         var content = new StreamContent(file.OpenReadStream(MaxFileSize));
         content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
         form.Add(content, "file", file.Name);

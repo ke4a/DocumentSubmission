@@ -165,8 +165,8 @@
 
     private Task Download(DocumentVersion version) => Run(async () =>
     {
-        using var streamReference = new DotNetStreamReference(await Api.DownloadAsync(Id, version.Number));
-        await JS.InvokeVoidAsync("downloadFile", version.FileName, streamReference);
+        var bytes = await Api.DownloadAsync(Id, version.Number);
+        await JS.InvokeVoidAsync("downloadFile", version.FileName, bytes);
     });
 
     // Runs a workflow action, then reloads the submission and its audit trail.

@@ -1,4 +1,4 @@
-namespace DocumentSubmission.Web.Components;
+namespace DocumentSubmission.Web.Shared;
 
 public static class Format
 {

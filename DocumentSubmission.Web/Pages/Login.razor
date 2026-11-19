@@ -1,5 +1,4 @@
 @page "/login"
-@inject IConfiguration Configuration
 @inject ApiClient Api
 @inject UserSession Session
 @inject NavigationManager Navigation
@@ -23,13 +22,10 @@
 </form>
 
 @code {
-    private LoginUser[] users = [];
+    private readonly LoginUser[] users = LoginUser.Seeded;
     private string userId = "";
     private bool busy;
     private ApiException? error;
-
-    protected override void OnInitialized() =>
-        users = Configuration.GetSection("Users").Get<LoginUser[]>() ?? [];
 
     private async Task LogIn()
     {

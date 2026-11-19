@@ -1,28 +1,16 @@
-using DocumentSubmission.Web.Components;
+using DocumentSubmission.Web;
 using DocumentSubmission.Web.Services;
+using Microsoft.AspNetCore.Components.Web;
+using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 
-var builder = WebApplication.CreateBuilder(args);
+var builder = WebAssemblyHostBuilder.CreateDefault(args);
+builder.RootComponents.Add<App>("#app");
+builder.RootComponents.Add<HeadOutlet>("head::after");
 
-builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents();
+// The API serves this app under /ui, so the API itself is at the root of the same origin.
+var apiBaseAddress = new Uri(new Uri(builder.HostEnvironment.BaseAddress), "/");
+builder.Services.AddSingleton(new HttpClient { BaseAddress = apiBaseAddress });
+builder.Services.AddSingleton<UserSession>();
+builder.Services.AddSingleton<ApiClient>();
 
-var apiBaseUrl = builder.Configuration["Api:BaseUrl"]
-    ?? throw new InvalidOperationException("Set Api:BaseUrl to the Document Submission API address.");
-builder.Services.AddHttpClient<ApiClient>(client => client.BaseAddress = new Uri(apiBaseUrl));
-builder.Services.AddScoped<UserSession>();
-
-var app = builder.Build();
-
-if (!app.Environment.IsDevelopment())
-{
-    app.UseExceptionHandler("/Error", createScopeForErrors: true);
-}
-app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
-
-app.UseAntiforgery();
-
-app.MapStaticAssets();
-app.MapRazorComponents<App>()
-    .AddInteractiveServerRenderMode();
-
-app.Run();
+await builder.Build().RunAsync();
