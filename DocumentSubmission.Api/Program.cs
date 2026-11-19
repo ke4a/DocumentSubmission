@@ -92,4 +92,12 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
+if (app.Environment.IsDevelopment())
+{
+    // Web UI: the Blazor WebAssembly app in DocumentSubmission.Web, served under /ui from the same origin
+    // as the API (so no CORS). Development only, like the login it relies on.
+    app.MapStaticAssets();                                              // /ui/index.html, /ui/_framework/...
+    app.MapFallbackToFile("ui/{*path:nonfile}", "ui/index.html");       // deep links such as /ui/submissions/{id}
+}
+
 app.Run();

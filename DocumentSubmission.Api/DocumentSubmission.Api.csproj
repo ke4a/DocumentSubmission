@@ -20,6 +20,8 @@
     <ItemGroup>
       <ProjectReference Include="..\DocumentSubmission.Domain\DocumentSubmission.Domain.csproj" />
       <ProjectReference Include="..\DocumentSubmission.Infrastructure\DocumentSubmission.Infrastructure.csproj" />
+      <!-- Only for its static files: the API serves the web UI under /ui. -->
+      <ProjectReference Include="..\DocumentSubmission.Web\DocumentSubmission.Web.csproj" />
     </ItemGroup>
 
 </Project>

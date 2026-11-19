@@ -7,11 +7,13 @@ WORKDIR /src
 COPY DocumentSubmission.Domain/DocumentSubmission.Domain.csproj DocumentSubmission.Domain/
 COPY DocumentSubmission.Infrastructure/DocumentSubmission.Infrastructure.csproj DocumentSubmission.Infrastructure/
 COPY DocumentSubmission.Api/DocumentSubmission.Api.csproj DocumentSubmission.Api/
+COPY DocumentSubmission.Web/DocumentSubmission.Web.csproj DocumentSubmission.Web/
 RUN dotnet restore DocumentSubmission.Api/DocumentSubmission.Api.csproj
 
 COPY DocumentSubmission.Domain/ DocumentSubmission.Domain/
 COPY DocumentSubmission.Infrastructure/ DocumentSubmission.Infrastructure/
 COPY DocumentSubmission.Api/ DocumentSubmission.Api/
+COPY DocumentSubmission.Web/ DocumentSubmission.Web/
 RUN dotnet publish DocumentSubmission.Api/DocumentSubmission.Api.csproj -c Release -o /app --no-restore
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
