@@ -34,7 +34,7 @@ stateDiagram-v2
 | Errors | ProblemDetails, with one `IExceptionHandler` for domain exceptions |
 | Time | UTC; domain methods receive the current time as a parameter |
 | Tests | xUnit; `WebApplicationFactory` + Testcontainers (PostgreSQL) for integration tests |
-| UI | Blazor Web App (Interactive Server) with Bootstrap; calls the API over HTTP |
+| UI | Blazor WebAssembly with Bootstrap, served by the API under `/ui` (same origin, Development only) |
 | Run | Docker Compose |
 
 Solution layout:
@@ -46,7 +46,7 @@ Solution layout:
 | `DocumentSubmission.Api` | Controllers, auth, file validation, error mapping, thin use-case services | Domain, Infrastructure |
 | `DocumentSubmission.Domain.Tests` | Unit tests for the domain | Domain |
 | `DocumentSubmission.Api.IntegrationTests` | HTTP and database integration tests | Api |
-| `DocumentSubmission.Web` | UI pages, one typed API client | nothing (HTTP only) |
+| `DocumentSubmission.Web` | UI pages, one API client | nothing (calls the API over HTTP; the Api project references it only to serve its files) |
 
 ## 3. Domain model
 
@@ -228,7 +228,7 @@ The domain assigns all Ids (`Guid.NewGuid()`) when it creates an entity, because
 |----|-------------|---------------------|
 | N1 | Conflicting concurrent actions are safe. | Of two conflicting state-changing requests on the same submission, one succeeds and the other gets `409`, never `500`. |
 | N2 | Consistent errors. | Every error response is RFC 9457 ProblemDetails (`application/problem+json`). |
-| N3 | One-command run. | `docker compose up` starts the API (Development), the web UI and Postgres; the API waits for the Postgres healthcheck, then applies migrations and seed data. |
+| N3 | One-command run. | `docker compose up` starts the API (Development) and Postgres; the API waits for the Postgres healthcheck, then applies migrations and seed data. |
 | N4 | API documentation. | OpenAPI document and interactive UI in Development. |
 | N5 | Efficient queries. | List and detail queries are no-tracking projections that never load file bytes. |
 | N6 | Fictional data only. | Seed data contains no real people or organisations. |
@@ -319,11 +319,11 @@ Responses: create → `201 Created` with the submission and a `Location` header;
 
 ## 9. UI
 
-A thin client of the API in §8; it has no data or rules of its own.
+A thin client of the API in §8; it has no data or rules of its own. It runs in the browser and is served by the API under `/ui`, in Development only (it relies on the Development login). Same origin, so no CORS; every API call is a normal browser request. Any `/ui/...` path that is not a file returns the app's `index.html`.
 
 | Page | Who | Content |
 |------|-----|---------|
-| Login | anyone (Development only) | Pick a seeded user → `POST /auth/login`. The token is kept in server memory for the browser tab. |
+| Login | anyone (Development only) | Pick a seeded user → `POST /auth/login`. The token is kept in memory; reloading the page logs out. |
 | Submissions | Editor, Reviewer | `GET /submissions`; Editors also get "New submission". |
 | New submission | Editor | Title, Reviewer (`GET /reviewers`), file, optional comment → `POST /submissions`. |
 | Submission details | participants | Status, participants, versions with downloads, approved version, recipient, audit trail, and the actions below. |

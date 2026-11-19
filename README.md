@@ -12,16 +12,16 @@ Requires Docker.
 docker compose up --build
 ```
 
-This starts PostgreSQL, the API and the web UI in the `Development` environment. The API waits for the database healthcheck, then applies the EF Core migrations and seed data.
+This starts PostgreSQL and the API in the `Development` environment. The API waits for the database healthcheck, then applies the EF Core migrations and seed data.
 
-- Web UI: <http://localhost:8081>
 - API: <http://localhost:8080>
+- Web UI: <http://localhost:8080/ui>
 - Interactive API docs (Scalar): <http://localhost:8080/scalar>
 - OpenAPI document: <http://localhost:8080/openapi/v1.json>
 
 Stop and delete the data with `docker compose down -v`.
 
-To run the API from the IDE instead (`dotnet run --project DocumentSubmission.Api`), start only the database with `docker compose up db`. The API then listens on <http://localhost:5213>.
+To run the API from the IDE instead (`dotnet run --project DocumentSubmission.Api`), start only the database with `docker compose up db`. The API then listens on <http://localhost:5213> (web UI: <http://localhost:5213/ui>).
 
 For local runs, Docker Compose and `appsettings.Development.json` provide all configuration. Elsewhere, set `ConnectionStrings__Database` and `Jwt__SigningKey` (at least 32 characters); the other `Jwt__*` settings have defaults in `appsettings.json`.
 
@@ -64,11 +64,10 @@ Alternatively, use the interactive docs at <http://localhost:8080/scalar>.
 
 ## Web UI
 
-`DocumentSubmission.Web` is a Blazor Server app and a thin client of the API: it only calls the endpoints listed below, over HTTP. Under Docker Compose it runs at <http://localhost:8081>.
+Open <http://localhost:8080/ui>. `DocumentSubmission.Web` is a Blazor WebAssembly app that the API serves under `/ui` (Development only). It runs in the browser and calls the endpoints listed below on the same origin, so every call shows in the browser's developer tools (Network tab).
 
-- Log in by picking a seeded user. Like `/auth/login`, this is for Development only. Reloading the page logs out.
+- Log in by picking a seeded user (Development only, like `/auth/login`). The token is kept in memory; reloading the page logs out.
 - Buttons appear only for actions the API would allow; the API still checks every request.
-- To run it from the IDE: `dotnet run --project DocumentSubmission.Web` (<http://localhost:5075>). It calls the API at `Api:BaseUrl` (`http://localhost:8080` in `appsettings.Development.json`).
 
 ## Solution layout
 
@@ -79,7 +78,7 @@ Alternatively, use the interactive docs at <http://localhost:8080/scalar>.
 | `DocumentSubmission.Api` | Controllers, request/response contracts, JWT auth and policies, upload validation, exception → ProblemDetails mapping, thin use-case services |
 | `DocumentSubmission.Domain.Tests` | Unit tests, one class per `Submission` method |
 | `DocumentSubmission.Api.IntegrationTests` | `WebApplicationFactory` + Testcontainers PostgreSQL tests |
-| `DocumentSubmission.Web` | Blazor Server UI; calls the API over HTTP, no references to the other projects |
+| `DocumentSubmission.Web` | Blazor WebAssembly UI, served by the API under `/ui`; calls the API over HTTP, no references to the other projects |
 
 ## Summary of the specification
 
