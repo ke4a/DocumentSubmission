@@ -25,6 +25,8 @@ public sealed class ApiClient(HttpClient http, UserSession session, NavigationMa
     public Task<LoginResponse> LoginAsync(Guid userId) =>
         SendAsync<LoginResponse>(HttpMethod.Post, "auth/login", JsonContent.Create(new { userId }));
 
+    public Task<List<LoginUser>> GetLoginUsersAsync() => SendAsync<List<LoginUser>>(HttpMethod.Get, "auth/users");
+
     public Task<List<Person>> GetReviewersAsync() => SendAsync<List<Person>>(HttpMethod.Get, "reviewers");
 
     public Task<List<Person>> GetRecipientsAsync() => SendAsync<List<Person>>(HttpMethod.Get, "recipients");

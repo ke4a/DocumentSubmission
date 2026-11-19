@@ -9,6 +9,9 @@
 @claraReviewer = 10000000-0000-0000-0000-000000000003
 @recordsOffice = 20000000-0000-0000-0000-000000000001
 
+### 0. Users that can log in (Development only)
+GET {{baseUrl}}/auth/users
+
 ### 1. Log in as the editor
 POST {{baseUrl}}/auth/login
 Content-Type: application/json

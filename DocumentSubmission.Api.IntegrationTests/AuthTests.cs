@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using DocumentSubmission.Api.Contracts;
 using DocumentSubmission.Api.IntegrationTests.Infrastructure;
+using DocumentSubmission.Domain.Users;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.IdentityModel.JsonWebTokens;
 using static DocumentSubmission.Api.IntegrationTests.Infrastructure.Users;
@@ -30,6 +31,25 @@ public class AuthTests(ApiFactory factory)
         var response = await factory.CreateClient().PostAsJsonAsync("/auth/login", new { userId = Guid.NewGuid() });
 
         await ProblemAssert.IsProblemAsync(response, HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task ListUsers_ReturnsSeededUsersWithoutToken()
+    {
+        var users = await ApiClient.ReadAsync<List<LoginUserResponse>>(await factory.CreateClient().GetAsync("/auth/users"));
+
+        Assert.Equal(6, users.Count);
+        Assert.Contains(new LoginUserResponse(ClaraReviewerNl, "Clara Cole", Role.Reviewer, "NL"), users);
+    }
+
+    [Fact]
+    public async Task ListUsers_OutsideDevelopment_Returns404()
+    {
+        using var production = factory.WithWebHostBuilder(builder => builder.UseEnvironment("Production"));
+
+        var response = await production.CreateClient().GetAsync("/auth/users");
+
+        await ProblemAssert.IsProblemAsync(response, HttpStatusCode.NotFound);
     }
 
     [Fact]

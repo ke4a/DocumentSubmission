@@ -7,7 +7,7 @@
         <a class="navbar-brand" href="">Document Submission</a>
         @if (Session.User is { } user)
         {
-            <span class="navbar-text ms-auto me-3">@user.Name · @user.Role · @user.Country</span>
+            <span class="navbar-text ms-auto me-3">@user.Name · @user.Role · @user.CountryCode</span>
             <button class="btn btn-outline-secondary btn-sm" @onclick="LogOut">Log out</button>
         }
     </div>

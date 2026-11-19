@@ -171,7 +171,7 @@ The domain assigns all Ids (`Guid.NewGuid()`) when it creates an entity, because
 | ID | Requirement | Acceptance criteria |
 |----|-------------|---------------------|
 | R1 | Two roles: Country Editor and Country Reviewer. Each user has exactly one role and one country. | Seed data: ≥ 2 Editors and ≥ 2 Reviewers in one country, ≥ 1 of each in a second country, Recipients in both — all with fixed, documented Ids. |
-| R2 | Simplified login issues a JWT, in Development only. | `POST /auth/login` with `{ "userId": "…" }` returns a token with `sub`, `role` and `country` claims. Unknown user → `401`. Outside Development → `404`. |
+| R2 | Simplified login issues a JWT, in Development only. | `POST /auth/login` with `{ "userId": "…" }` returns a token with `sub`, `role` and `country` claims. Unknown user → `401`. `GET /auth/users` lists the users that can log in (Id, name, role, country). Both outside Development → `404`. |
 | R3 | All other endpoints require authentication. | No token → `401`. |
 | R4 | Submissions are visible only to their participants. | Every `/submissions/{id}` route follows the visibility rule above. |
 
@@ -249,7 +249,7 @@ The domain assigns all Ids (`Guid.NewGuid()`) when it creates an entity, because
 
 | Test | Covers |
 |------|--------|
-| `Login_KnownUser_ReturnsTokenWithClaims`, `Login_UnknownUser_Returns401`, `Login_OutsideDevelopment_Returns404` | R2 |
+| `Login_KnownUser_ReturnsTokenWithClaims`, `Login_UnknownUser_Returns401`, `Login_OutsideDevelopment_Returns404`, `ListUsers_ReturnsSeededUsersWithoutToken`, `ListUsers_OutsideDevelopment_Returns404` | R2 |
 | `ProtectedEndpoints_WithoutToken_Return401` (every endpoint) | R3 |
 | `WrongRole_Returns403` (endpoint × role) | R5, R8, R9, R12, R17, R18 |
 | `SubmissionRoutes_NonParticipant_Return404` (route × non-participant) | R4, R9, R12, R18 |
@@ -304,6 +304,7 @@ Responses: create → `201 Created` with the submission and a `Location` header;
 
 | Method | Path | Who | Request body | Purpose |
 |--------|------|-----|--------------|---------|
+| GET | `/auth/users` | anyone (Development only) | — | Users that can log in → `[{ id, name, role, countryCode }]` |
 | POST | `/auth/login` | anyone (Development only) | JSON `{ "userId": "…" }` | Dev login → `{ token, expiresAt }` |
 | GET | `/reviewers` | Editor | — | Eligible reviewers in caller's country |
 | GET | `/recipients` | Editor | — | Eligible recipients in caller's country |
@@ -323,7 +324,7 @@ A thin client of the API in §8; it has no data or rules of its own. It runs in 
 
 | Page | Who | Content |
 |------|-----|---------|
-| Login | anyone (Development only) | Pick a seeded user → `POST /auth/login`. The token is kept in memory; reloading the page logs out. |
+| Login | anyone (Development only) | Pick a user from `GET /auth/users` → `POST /auth/login`. The token is kept in memory; reloading the page logs out. |
 | Submissions | Editor, Reviewer | `GET /submissions`; Editors also get "New submission". |
 | New submission | Editor | Title, Reviewer (`GET /reviewers`), file, optional comment → `POST /submissions`. |
 | Submission details | participants | Status, participants, versions with downloads, approved version, recipient, audit trail, and the actions below. |

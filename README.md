@@ -66,7 +66,7 @@ Alternatively, use the interactive docs at <http://localhost:8080/scalar>.
 
 Open <http://localhost:8080/ui>. `DocumentSubmission.Web` is a Blazor WebAssembly app that the API serves under `/ui` (Development only). It runs in the browser and calls the endpoints listed below on the same origin, so every call shows in the browser's developer tools (Network tab).
 
-- Log in by picking a seeded user (Development only, like `/auth/login`). The token is kept in memory; reloading the page logs out.
+- Log in by picking a user from `GET /auth/users` (Development only, like `/auth/login`). The token is kept in memory; reloading the page logs out.
 - Buttons appear only for actions the API would allow; the API still checks every request.
 
 ## Solution layout
@@ -112,6 +112,7 @@ All endpoints except login need `Authorization: Bearer <token>`. Errors are `app
 
 | Method | Path | Who | Body |
 |--------|------|-----|------|
+| GET | `/auth/users` | anyone (Development only) | Users that can log in |
 | POST | `/auth/login` | anyone (Development only) | `{ "userId" }` → `{ token, expiresAt }` |
 | GET | `/reviewers` | Editor | Reviewers in the caller's country |
 | GET | `/recipients` | Editor | Recipients in the caller's country |

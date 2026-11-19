@@ -3,6 +3,7 @@ using DocumentSubmission.Api.Contracts;
 using DocumentSubmission.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace DocumentSubmission.Api.Controllers;
 
@@ -25,4 +26,14 @@ public sealed class AuthController(AppDbContext db, TokenService tokenService) :
         var (token, expiresAt) = tokenService.CreateToken(user);
         return new LoginResponse(token, expiresAt);
     }
+
+    /// <summary>Development-only: the users that can log in, e.g. for a login picker (R2).</summary>
+    [HttpGet("users")]
+    [AllowAnonymous]
+    [DevelopmentOnly]
+    public async Task<IReadOnlyList<LoginUserResponse>> ListUsers(CancellationToken cancellationToken) =>
+        await db.Users.AsNoTracking()
+            .OrderBy(u => u.Name)
+            .Select(u => new LoginUserResponse(u.Id, u.Name, u.Role, u.CountryCode))
+            .ToListAsync(cancellationToken);
 }

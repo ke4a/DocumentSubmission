@@ -15,17 +15,29 @@
         <option value="">Choose a user…</option>
         @foreach (var user in users)
         {
-            <option value="@user.Id">@user.Name — @user.Role, @user.Country</option>
+            <option value="@user.Id">@user.Name — @user.Role, @user.CountryCode</option>
         }
     </select>
     <button class="btn btn-primary text-nowrap" disabled="@busy">Log in</button>
 </form>
 
 @code {
-    private readonly LoginUser[] users = LoginUser.Seeded;
+    private List<LoginUser> users = [];
     private string userId = "";
     private bool busy;
     private ApiException? error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            users = await Api.GetLoginUsersAsync();
+        }
+        catch (ApiException ex)
+        {
+            error = ex;
+        }
+    }
 
     private async Task LogIn()
     {

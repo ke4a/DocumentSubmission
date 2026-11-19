@@ -1,8 +1,11 @@
 using DocumentSubmission.Domain.Submissions;
+using DocumentSubmission.Domain.Users;
 
 namespace DocumentSubmission.Api.Contracts;
 
 public sealed record LoginResponse(string Token, DateTime ExpiresAt);
+
+public sealed record LoginUserResponse(Guid Id, string Name, Role Role, string CountryCode);
 
 public sealed record PersonResponse(Guid Id, string Name);
 

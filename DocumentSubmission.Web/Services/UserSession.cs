@@ -17,16 +17,5 @@ public sealed class UserSession
     public void LogOut() => (User, Token) = (null, null);
 }
 
-public sealed record LoginUser(Guid Id, string Name, string Role, string Country)
-{
-    /// <summary>The seeded users (DocumentSubmission.Infrastructure/SeedData.cs) offered on the login page.</summary>
-    public static readonly LoginUser[] Seeded =
-    [
-        new(Guid.Parse("10000000-0000-0000-0000-000000000001"), "Alice Ashford", "Editor", "NL"),
-        new(Guid.Parse("10000000-0000-0000-0000-000000000002"), "Bram Brink", "Editor", "NL"),
-        new(Guid.Parse("10000000-0000-0000-0000-000000000003"), "Clara Cole", "Reviewer", "NL"),
-        new(Guid.Parse("10000000-0000-0000-0000-000000000004"), "Daan Dekker", "Reviewer", "NL"),
-        new(Guid.Parse("10000000-0000-0000-0000-000000000005"), "Emma Evers", "Editor", "BE"),
-        new(Guid.Parse("10000000-0000-0000-0000-000000000006"), "Finn Fontaine", "Reviewer", "BE"),
-    ];
-}
+/// <summary>A user that can log in (from the Development-only <c>GET /auth/users</c>).</summary>
+public sealed record LoginUser(Guid Id, string Name, string Role, string CountryCode);
