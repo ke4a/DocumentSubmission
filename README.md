@@ -12,8 +12,9 @@ Requires Docker.
 docker compose up --build
 ```
 
-This starts PostgreSQL and the API in the `Development` environment. The API waits for the database healthcheck, then applies the EF Core migrations and seed data.
+This starts PostgreSQL, the API and the web UI in the `Development` environment. The API waits for the database healthcheck, then applies the EF Core migrations and seed data.
 
+- Web UI: <http://localhost:8081>
 - API: <http://localhost:8080>
 - Interactive API docs (Scalar): <http://localhost:8080/scalar>
 - OpenAPI document: <http://localhost:8080/openapi/v1.json>
@@ -61,6 +62,14 @@ Two `.http` files walk through the whole workflow (login → create → return �
 
 Alternatively, use the interactive docs at <http://localhost:8080/scalar>.
 
+## Web UI
+
+`DocumentSubmission.Web` is a Blazor Server app and a thin client of the API: it only calls the endpoints listed below, over HTTP. Under Docker Compose it runs at <http://localhost:8081>.
+
+- Log in by picking a seeded user. Like `/auth/login`, this is for Development only. Reloading the page logs out.
+- Buttons appear only for actions the API would allow; the API still checks every request.
+- To run it from the IDE: `dotnet run --project DocumentSubmission.Web` (<http://localhost:5075>). It calls the API at `Api:BaseUrl` (`http://localhost:8080` in `appsettings.Development.json`).
+
 ## Solution layout
 
 | Project | Contains |
@@ -70,6 +79,7 @@ Alternatively, use the interactive docs at <http://localhost:8080/scalar>.
 | `DocumentSubmission.Api` | Controllers, request/response contracts, JWT auth and policies, upload validation, exception → ProblemDetails mapping, thin use-case services |
 | `DocumentSubmission.Domain.Tests` | Unit tests, one class per `Submission` method |
 | `DocumentSubmission.Api.IntegrationTests` | `WebApplicationFactory` + Testcontainers PostgreSQL tests |
+| `DocumentSubmission.Web` | Blazor Server UI; calls the API over HTTP, no references to the other projects |
 
 ## Summary of the specification
 

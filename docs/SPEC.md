@@ -34,6 +34,7 @@ stateDiagram-v2
 | Errors | ProblemDetails, with one `IExceptionHandler` for domain exceptions |
 | Time | UTC; domain methods receive the current time as a parameter |
 | Tests | xUnit; `WebApplicationFactory` + Testcontainers (PostgreSQL) for integration tests |
+| UI | Blazor Web App (Interactive Server) with Bootstrap; calls the API over HTTP |
 | Run | Docker Compose |
 
 Solution layout:
@@ -45,6 +46,7 @@ Solution layout:
 | `DocumentSubmission.Api` | Controllers, auth, file validation, error mapping, thin use-case services | Domain, Infrastructure |
 | `DocumentSubmission.Domain.Tests` | Unit tests for the domain | Domain |
 | `DocumentSubmission.Api.IntegrationTests` | HTTP and database integration tests | Api |
+| `DocumentSubmission.Web` | UI pages, one typed API client | nothing (HTTP only) |
 
 ## 3. Domain model
 
@@ -226,7 +228,7 @@ The domain assigns all Ids (`Guid.NewGuid()`) when it creates an entity, because
 |----|-------------|---------------------|
 | N1 | Conflicting concurrent actions are safe. | Of two conflicting state-changing requests on the same submission, one succeeds and the other gets `409`, never `500`. |
 | N2 | Consistent errors. | Every error response is RFC 9457 ProblemDetails (`application/problem+json`). |
-| N3 | One-command run. | `docker compose up` starts the API (Development) and Postgres; the API waits for the Postgres healthcheck, then applies migrations and seed data. |
+| N3 | One-command run. | `docker compose up` starts the API (Development), the web UI and Postgres; the API waits for the Postgres healthcheck, then applies migrations and seed data. |
 | N4 | API documentation. | OpenAPI document and interactive UI in Development. |
 | N5 | Efficient queries. | List and detail queries are no-tracking projections that never load file bytes. |
 | N6 | Fictional data only. | Seed data contains no real people or organisations. |
@@ -315,9 +317,21 @@ Responses: create → `201 Created` with the submission and a `Location` header;
 | GET | `/submissions/{id}/versions/{versionNumber}/content` | participants | — | Download a version |
 | GET | `/submissions/{id}/audit` | participants | — | Audit trail |
 
-## 9. Out of scope
+## 9. UI
 
-- UI (may be added after the backend).
+A thin client of the API in §8; it has no data or rules of its own.
+
+| Page | Who | Content |
+|------|-----|---------|
+| Login | anyone (Development only) | Pick a seeded user → `POST /auth/login`. The token is kept in server memory for the browser tab. |
+| Submissions | Editor, Reviewer | `GET /submissions`; Editors also get "New submission". |
+| New submission | Editor | Title, Reviewer (`GET /reviewers`), file, optional comment → `POST /submissions`. |
+| Submission details | participants | Status, participants, versions with downloads, approved version, recipient, audit trail, and the actions below. |
+
+**The UI hides actions that cannot succeed; the API stays the authority.** An action is shown only to the user and status the API allows: approve/return for the assigned Reviewer while `Submitted` (sending the version shown on the page), resubmit for the creating Editor while `Returned`, distribute for the creating Editor while `Approved`. API errors are shown from the ProblemDetails `title` and `detail`; a `401` returns to the login page.
+
+## 10. Out of scope
+
 - User management, real identity provider, notifications/delivery.
 - Pagination and filtering of submission lists.
 - Rate limiting and throttling.
